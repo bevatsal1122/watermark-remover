@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ImageIcon, Loader2, UploadIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 interface ImageUploadProps {
   onUpload: (file: File) => void;
@@ -12,6 +12,7 @@ interface ImageUploadProps {
 
 export function ImageUpload({ onUpload, isLoading }: ImageUploadProps) {
   const [preview, setPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -25,6 +26,11 @@ export function ImageUpload({ onUpload, isLoading }: ImageUploadProps) {
     reader.readAsDataURL(file);
 
     onUpload(file);
+  };
+
+  const handleButtonClick = () => {
+    // Trigger file input click when button is clicked
+    fileInputRef.current?.click();
   };
 
   return (
@@ -76,6 +82,11 @@ export function ImageUpload({ onUpload, isLoading }: ImageUploadProps) {
                 </p>
                 <Button 
                   className="bg-[#b67cff] hover:bg-[#a56cf0] text-white"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleButtonClick();
+                  }}
+                  disabled={isLoading}
                 >
                   Choose Image
                 </Button>
@@ -92,6 +103,7 @@ export function ImageUpload({ onUpload, isLoading }: ImageUploadProps) {
             accept="image/png,image/jpeg,image/jpg,image/webp"
             onChange={handleFileChange}
             disabled={isLoading}
+            ref={fileInputRef}
           />
         </label>
       </div>

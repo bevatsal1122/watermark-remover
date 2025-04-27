@@ -17,9 +17,10 @@ const MODELS = {
 
 // Define different prompt approaches
 const PROMPTS = {
-  ENHANCE: "Please enhance this image by restoring it to a clean, professional version. Remove any distracting elements or overlaid text while preserving the original content quality and details.",
-  RESTORE: "This image needs restoration to make it look clear and professional. Please clean up the image by removing any visual noise or text elements while maintaining the original content.",
-  CREATIVE: "Create a beautiful, clean version of this image that highlights the main subject. Any distracting or unnecessary elements should be removed to improve visual clarity."
+  ENHANCE: "Please enhance this image by restoring it to a clean, professional version. Remove any distracting elements or overlaid text while preserving the original content quality and details. Remove any watermarks.",
+  RESTORE: "This image needs restoration to make it look clear and professional. Please clean up the image by removing any visual noise or text elements while maintaining the original content. Remove any watermarks.",
+  CREATIVE: "Create a beautiful, clean version of this image that highlights the main subject. Any distracting or unnecessary elements should be removed to improve visual clarity. Remove any watermarks.",
+  REMOVE_WATERMARK: "Remove any watermarks from this image. Ensure the image is clean and professional without any unwanted text or logos."
 };
 
 export async function POST(request: NextRequest) {
