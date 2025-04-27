@@ -56,13 +56,18 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#121212] to-[#1d1d1d] relative overflow-hidden">
-      {/* Decorative elements */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-20">
-        <div className="absolute -top-40 -left-40 w-80 h-80 bg-gray-500/30 rounded-full blur-3xl" />
-        <div className="absolute top-1/3 -right-20 w-60 h-60 bg-gray-600/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 left-1/4 w-80 h-80 bg-gray-400/20 rounded-full blur-3xl" />
-      </div>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Video background */}
+      <video
+        src="/Chevrons-moving-down-3.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover opacity-80"
+      />
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#222222]/70 to-[#303030]/70" />
 
       <main className="container mx-auto py-14 px-4 relative z-10">
         {/* Hero section */}
@@ -91,7 +96,7 @@ export default function Home() {
 
         {/* Main Upload/Result Section */}
         <div className="mb-16 max-w-4xl mx-auto">
-          <Card className="border-0 bg-gradient-to-b from-[#181818] to-[#232323] shadow-[0_0_15px_rgba(60,60,60,0.3)] overflow-hidden backdrop-blur-sm hover:shadow-xl transition-all duration-300">
+          <Card className="border-0 bg-gradient-to-b from-[#181818] to-[#232323] overflow-hidden backdrop-blur-sm transition-all duration-300">
             <CardHeader className="border-b border-gray-700 pb-4">
               <CardTitle className="text-gray-200 text-2xl text-center">
                 Upload Your Image
@@ -144,47 +149,57 @@ export default function Home() {
         </div>
 
         {/* How It Works Section */}
-        <div className="mb-20 max-w-4xl mx-auto">
-          <h2 className="text-4xl font-bold text-gray-200 mb-10 text-center bg-clip-text text-transparent bg-gradient-to-r from-gray-300 to-white">
-            How It Works
-          </h2>
-          <div className="relative flex flex-col items-center">
-            {/* Vertical connecting line */}
-            <div className="absolute h-full w-1 bg-gradient-to-b from-[#222] to-[#333] left-1/2 transform -translate-x-1/2 z-0 hidden md:block" style={{ top: '3rem', maxHeight: 'calc(100% - 6rem)' }}></div>
-            
-            {/* Step 1 */}
-            <div className="flex flex-col items-center mb-16 relative z-10 w-full max-w-xl mx-auto">
-              <div className="w-full p-6 bg-[#121212]/80 rounded-2xl border border-gray-800 hover:bg-[#151515] transition-all duration-300">
-                <h3 className="text-gray-100 font-medium text-xl mb-3">
-                  Upload Image
-                </h3>
+        <div className="mb-20 max-w-3xl mx-auto relative">
+          {/* Background gradient & blurred shapes */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#252525] to-[#333333] rounded-3xl overflow-hidden">
+            <div className="absolute top-0 left-1/2 w-64 h-64 bg-[#333]/30 rounded-full blur-3xl transform -translate-x-1/2 animate-pulse"></div>
+            <div className="absolute bottom-0 right-1/3 w-48 h-48 bg-[#444]/20 rounded-full blur-3xl"></div>
+          </div>
+          <div className="relative py-16 px-8">
+            <h2 className="text-4xl font-bold text-gray-200 mb-12 text-center bg-clip-text text-transparent bg-gradient-to-r from-gray-400 via-gray-300 to-white animate-pulse">
+              How It Works
+            </h2>
+            <div className="flex flex-col items-center space-y-12">
+              {/* Step 1 */}
+              <div className="w-full max-w-xl p-6 bg-[#121212]/80 rounded-2xl border border-gray-800 hover:bg-[#151515] transition-transform transform hover:scale-105 duration-300">
+                <div className="flex items-center mb-4">
+                  <div className="bg-gradient-to-b from-[#222] to-[#333] p-4 rounded-full w-10 h-10 flex items-center justify-center mr-4">
+                    <span className="text-gray-100 text-lg font-bold">1</span>
+                  </div>
+                  <h3 className="text-gray-100 font-medium text-xl">
+                    Upload Image
+                  </h3>
+                </div>
                 <p className="text-gray-400 leading-relaxed">
-                  Upload any image that contains unwanted watermarks. Our system accepts various image formats including JPG, PNG, and WEBP with a maximum size of 10MB.
+                  Upload any image that contains unwanted watermarks. Supports JPG, PNG, and WEBP up to 10MB.
                 </p>
               </div>
-            </div>
-            
-            {/* Step 2 */}
-            <div className="flex flex-col items-center mb-16 relative z-10 w-full max-w-xl mx-auto">
-  
-              <div className="w-full p-6 bg-[#121212]/80 rounded-2xl border border-gray-800 hover:bg-[#151515] transition-all duration-300">
-                <h3 className="text-gray-100 font-medium text-xl mb-3">
-                  AI Processing
-                </h3>
+              {/* Step 2 */}
+              <div className="w-full max-w-xl p-6 bg-[#121212]/80 rounded-2xl border border-gray-800 hover:bg-[#151515] transition-transform transform hover:scale-105 duration-300">
+                <div className="flex items-center mb-4">
+                  <div className="bg-gradient-to-b from-[#222] to-[#333] p-4 rounded-full w-10 h-10 flex items-center justify-center mr-4">
+                    <span className="text-gray-100 text-lg font-bold">2</span>
+                  </div>
+                  <h3 className="text-gray-100 font-medium text-xl">
+                    AI Processing
+                  </h3>
+                </div>
                 <p className="text-gray-400 leading-relaxed">
-                  Our advanced AI identifies and processes the watermark using state-of-the-art computer vision algorithms. The system intelligently analyzes the image to detect watermark patterns.
+                  Our AI analyzes and removes watermarks with precision, preserving the original quality.
                 </p>
               </div>
-            </div>
-            
-            {/* Step 3 */}
-            <div className="flex flex-col items-center relative z-10 w-full max-w-xl mx-auto">
-              <div className="w-full p-6 bg-[#121212]/80 rounded-2xl border border-gray-800 hover:bg-[#151515] transition-all duration-300">
-                <h3 className="text-gray-100 font-medium text-xl mb-3">
-                  Download Result
-                </h3>
+              {/* Step 3 */}
+              <div className="w-full max-w-xl p-6 bg-[#121212]/80 rounded-2xl border border-gray-800 hover:bg-[#151515] transition-transform transform hover:scale-105 duration-300">
+                <div className="flex items-center mb-4">
+                  <div className="bg-gradient-to-b from-[#222] to-[#333] p-4 rounded-full w-10 h-10 flex items-center justify-center mr-4">
+                    <span className="text-gray-100 text-lg font-bold">3</span>
+                  </div>
+                  <h3 className="text-gray-100 font-medium text-xl">
+                    Download Result
+                  </h3>
+                </div>
                 <p className="text-gray-400 leading-relaxed">
-                  Download your clean, watermark-free image instantly. The processed image maintains high quality while effectively removing unwanted watermarks and preserving the original details.
+                  Download your watermark-free image instantly, with no loss in detail or resolution.
                 </p>
               </div>
             </div>
