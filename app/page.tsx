@@ -305,7 +305,9 @@ export default function Home() {
                           <h3 className="text-red-400 font-medium mb-2">
                             Processing Failed
                           </h3>
-                          <p className="text-red-300 text-sm">{error}</p>
+                          <p className="text-red-300 text-sm">
+                            Model failed to remove watermarks. Please try again.
+                          </p>
                         </div>
                         <button
                           onClick={() => {
