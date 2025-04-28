@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss';
+import plugin from 'tailwindcss/plugin';
 
 const config: Config = {
   darkMode: ['class'],
@@ -78,13 +79,59 @@ const config: Config = {
             height: '0',
           },
         },
+        'slide-in': {
+          '0%': {
+            transform: 'translateX(-10px)',
+            opacity: '0',
+          },
+          '100%': {
+            transform: 'translateX(0)',
+            opacity: '1',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'slide-in': 'slide-in 0.4s ease-out',
+      },
+      animationDelay: {
+        '100': '100ms',
+        '200': '200ms',
+        '300': '300ms',
+        '400': '400ms',
+        '500': '500ms',
+      },
+      animationFillMode: {
+        'forwards': 'forwards',
+        'backwards': 'backwards',
+        'both': 'both',
+        'none': 'none',
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [
+    require('tailwindcss-animate'),
+    plugin(({ addUtilities, theme }) => {
+      const animationDelayUtilities = Object.entries(theme('animationDelay') as Record<string, string>).reduce(
+        (acc: Record<string, Record<string, string>>, [key, value]) => {
+          acc[`.animation-delay-${key}`] = { animationDelay: value };
+          return acc;
+        },
+        {}
+      );
+      
+      const animationFillModeUtilities = Object.entries(theme('animationFillMode') as Record<string, string>).reduce(
+        (acc: Record<string, Record<string, string>>, [key, value]) => {
+          acc[`.animation-fill-mode-${key}`] = { animationFillMode: value };
+          return acc;
+        },
+        {}
+      );
+      
+      addUtilities(animationDelayUtilities);
+      addUtilities(animationFillModeUtilities);
+    }),
+  ],
 };
 export default config;

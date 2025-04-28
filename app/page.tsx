@@ -8,24 +8,64 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import {
   ArrowRight,
-  Zap,
-  Shield,
   Image as ImageIcon,
   Download,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
+
+enum ProcessingStage {
+  None = "",
+  Analyzing = "Analyzing image...",
+  Detecting = "Detecting watermarks...",
+  Processing = "Processing image...",
+  Finalizing = "Finalizing result...",
+  Complete = "Complete"
+}
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [currentStage, setCurrentStage] = useState<ProcessingStage>(ProcessingStage.None);
+  const [error, setError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (isLoading && currentStage === ProcessingStage.Analyzing) {
+      const stageTimings = [
+        { stage: ProcessingStage.Detecting, delay: 800 },
+        { stage: ProcessingStage.Processing, delay: 1800 },
+        { stage: ProcessingStage.Finalizing, delay: 3000 },
+      ];
+      
+      let timeoutIds: NodeJS.Timeout[] = [];
+      
+      stageTimings.forEach(({ stage, delay }) => {
+        const id = setTimeout(() => {
+          setCurrentStage(stage);
+        }, delay);
+        timeoutIds.push(id);
+      });
+      
+      return () => {
+        timeoutIds.forEach(id => clearTimeout(id));
+      };
+    }
+  }, [isLoading, currentStage]);
 
   const handleImageUpload = async (image: File) => {
     try {
       setIsLoading(true);
+      setError(null);
+      setCurrentStage(ProcessingStage.Analyzing);
+      
+      const origImgUrl = URL.createObjectURL(image);
+      setOriginalImage(origImgUrl);
       
       const formData = new FormData();
       formData.append("image", image);
@@ -35,25 +75,60 @@ export default function Home() {
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to process image");
-      }
-
       const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || data.details || "Failed to process image");
       }
 
+      setCurrentStage(ProcessingStage.Complete);
       setResult(data.processedImageUrl);
       toast.success("Watermark removed successfully!");
     } catch (error) {
       console.error("Error:", error);
+      setCurrentStage(ProcessingStage.None);
+      setError(error instanceof Error ? error.message : "Failed to process image");
       toast.error("Failed to process image. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
+
+  const ProcessingIndicator = () => (
+    <div className="flex flex-col items-center justify-center p-8 space-y-6 select-none">
+      <div className="relative">
+        <Loader2 className="w-12 h-12 text-gray-400 animate-spin" />
+        {currentStage === ProcessingStage.Complete && (
+          <CheckCircle2 className="w-12 h-12 text-green-500 absolute top-0 left-0 animate-slide-in" />
+        )}
+      </div>
+      <div className="text-center">
+        <h3 className="font-medium text-gray-200 text-lg mb-2 select-none">
+          {currentStage}
+        </h3>
+        <div className="w-full bg-gray-700 h-1.5 rounded-full overflow-hidden">
+          <div
+            className="bg-gradient-to-r from-gray-500 to-gray-400 h-full rounded-full transition-all duration-500"
+            style={{
+              width:
+                currentStage === ProcessingStage.Analyzing
+                  ? "25%"
+                  : currentStage === ProcessingStage.Detecting
+                  ? "50%"
+                  : currentStage === ProcessingStage.Processing
+                  ? "75%"
+                  : currentStage === ProcessingStage.Finalizing
+                  ? "95%"
+                  : "100%",
+            }}
+          />
+        </div>
+        <p className="text-sm text-gray-400 mt-2 select-none">
+          Please wait while we remove the watermarks...
+        </p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#121212] to-[#1d1d1d] relative overflow-hidden">
@@ -88,53 +163,141 @@ export default function Home() {
         </div>
 
         <div className="mb-16 max-w-4xl mx-auto">
-          <Card className="border-0 bg-gradient-to-b from-[#181818] to-[#232323] shadow-[0_0_15px_rgba(60,60,60,0.3)] overflow-hidden backdrop-blur-sm hover:shadow-xl transition-all duration-300">
-            <CardHeader className="border-b border-gray-700 pb-4">
-              <CardTitle className="text-gray-200 text-2xl text-center">
-                Upload Your Image
-              </CardTitle>
-              <CardDescription className="text-gray-400 text-center">
-                Our AI will remove watermarks preventing the best possible quality
-          </CardDescription>
-        </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="">
-          <ImageUpload 
-            onUpload={handleImageUpload}
-            isLoading={isLoading}
-          />
-              </div>
-            </CardContent>
-          </Card>
-          
-          {result && (
-            <Card className="border-0 bg-gradient-to-b from-[#181818] to-[#232323] shadow-[0_0_15px_rgba(60,60,60,0.3)] overflow-hidden backdrop-blur-sm hover:shadow-xl transition-all duration-300 mt-6">
+          {!originalImage ? (
+            <Card className="border-0 bg-gradient-to-b from-[#181818] to-[#232323] overflow-hidden backdrop-blur-sm transition-all duration-300">
+              <CardHeader className="border-b border-gray-700 pb-4">
+                <CardTitle className="text-gray-200 text-2xl text-center">
+                  Upload Your Image
+                </CardTitle>
+                <CardDescription className="text-gray-400 text-center">
+                  Our AI will remove watermarks preventing the best possible quality
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-6">
+                <div className="">
+                  <ImageUpload 
+                    onUpload={handleImageUpload}
+                    isLoading={isLoading}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-0 bg-gradient-to-b from-[#181818] to-[#232323] shadow-[0_0_15px_rgba(60,60,60,0.3)] overflow-hidden backdrop-blur-sm hover:shadow-xl transition-all duration-300">
               <CardHeader className="border-b border-gray-700 pb-4">
                 <CardTitle className="text-gray-200 text-2xl">
-                  Your Enhanced Image
+                  {isLoading || !result ? "Processing Your Image" : "Your Enhanced Image"}
                 </CardTitle>
                 <CardDescription className="text-gray-400">
-                  Watermark successfully removed
+                  {isLoading || !result ? "Please wait while we remove watermarks" : "Watermark successfully removed"}
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <div className="rounded-lg overflow-hidden border border-gray-700 shadow-lg">
-                <img 
-                  src={result} 
-                  alt="Processed image" 
-                  className="w-full h-auto"
-                />
-              </div>
-                <div className="mt-4 flex justify-center">
-                  <a
-                    href={result}
-                    download="enhanced-image.jpg"
-                    className="px-4 py-2 bg-gradient-to-r from-gray-600 to-gray-800 rounded-md text-gray-200 font-medium hover:opacity-90 transition-opacity border border-gray-700 group flex items-center gap-2"
+                <div className="flex flex-col md:flex-row gap-4 min-h-[400px]">
+                  {/* Original Image */}
+                  <div className="md:w-[50%] rounded-lg overflow-hidden border border-gray-700 shadow-lg flex items-center justify-center">
+                    <div className="relative w-full h-full flex items-center justify-center">
+                      <img 
+                        src={originalImage!} 
+                        alt="Original image" 
+                        className="max-w-full max-h-full w-auto h-auto object-contain select-none"
+                      />
+                      <div className="absolute top-2 left-2 px-2 py-1 bg-gray-800/80 text-xs text-gray-200 rounded">
+                        Original
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Processed Image */}
+                  <div className="md:w-[50%] rounded-lg overflow-hidden border border-gray-700 shadow-lg">
+                    {isLoading ? (
+                      <ProcessingIndicator />
+                    ) : error ? (
+                      <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+                        <div className="bg-red-900/20 border border-red-800 rounded-lg p-4 w-full">
+                          <h3 className="text-red-400 font-medium mb-2">Processing Failed</h3>
+                          <p className="text-red-300 text-sm">{error}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setError(null);
+                            if (originalImage) {
+                              fetch(originalImage)
+                                .then(res => res.blob())
+                                .then(blob => {
+                                  const file = new File([blob], "image.jpg", { type: "image/jpeg" });
+                                  handleImageUpload(file);
+                                });
+                            }
+                          }}
+                          className="mt-4 px-4 py-2 bg-gray-700 rounded-md text-gray-200 font-medium hover:bg-gray-600 transition-colors border border-gray-600 flex items-center gap-2"
+                        >
+                          Try Again <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : !result ? (
+                      <div className="flex justify-center items-center h-full">
+                        <div className="text-center">
+                          <Loader2 className="w-10 h-10 text-gray-400 animate-spin mx-auto mb-4" />
+                          <p className="text-gray-300">Please wait, finishing up...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative h-full flex items-center justify-center">
+                        <img 
+                          src={result} 
+                          alt="Processed image" 
+                          className="max-w-full max-h-full w-auto h-auto object-contain select-none"
+                        />
+                        <div className="absolute top-2 left-2 px-2 py-1 bg-gray-800/80 text-xs text-gray-200 rounded">
+                          Enhanced
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-center space-x-4">
+                  <button
+                    onClick={() => {
+                      setResult(null);
+                      setOriginalImage(null);
+                      setCurrentStage(ProcessingStage.None);
+                    }}
+                    className="px-4 py-2 bg-gray-700 rounded-md text-gray-200 font-medium hover:bg-gray-600 transition-colors border border-gray-600 flex items-center gap-2"
                   >
-                    Download Image{" "}
-                    <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
-                  </a>
-            </div>
+                    Upload New Image <ImageIcon className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (originalImage) {
+                        fetch(originalImage)
+                          .then(res => res.blob())
+                          .then(blob => {
+                            const file = new File([blob], "image.jpg", { type: "image/jpeg" });
+                            setResult(null);
+                            handleImageUpload(file);
+                          })
+                          .catch(err => {
+                            console.error("Error retrying:", err);
+                            toast.error("Failed to retry. Please upload again.");
+                          });
+                      }
+                    }}
+                    className="px-4 py-2 bg-gray-700 rounded-md text-gray-200 font-medium hover:bg-gray-600 transition-colors border border-gray-600 flex items-center gap-2"
+                  >
+                    Try Again <ArrowRight className="w-4 h-4" />
+                  </button>
+                  {result && (
+                    <a
+                      href={result}
+                      download="enhanced-image.jpg"
+                      className="px-4 py-2 bg-gradient-to-r from-gray-600 to-gray-800 rounded-md text-gray-200 font-medium hover:opacity-90 transition-opacity border border-gray-700 group flex items-center gap-2"
+                    >
+                      Download Enhanced Image{" "}
+                      <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
+                    </a>
+                  )}
+                </div>
               </CardContent>
             </Card>
           )}
@@ -145,7 +308,6 @@ export default function Home() {
             How It Works
           </h2>
           <div className="relative flex flex-col items-center">
-            {/* Vertical connecting line */}
             <div className="absolute h-full w-1 bg-gradient-to-b from-[#222] to-[#333] left-1/2 transform -translate-x-1/2 z-0 hidden md:block" style={{ top: '3rem', maxHeight: 'calc(100% - 6rem)' }}></div>
             
             {/* Step 1 */}
@@ -194,7 +356,12 @@ export default function Home() {
             technology.
           </p>
           <button
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            onClick={() => {
+              setResult(null);
+              setOriginalImage(null);
+              setCurrentStage(ProcessingStage.None);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
             className="px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 rounded-md text-gray-200 font-medium hover:opacity-90 transition-all duration-300 shadow-lg shadow-gray-900/30 hover:shadow-xl group flex items-center gap-2 mx-auto"
           >
             Upload an Image{" "}
@@ -204,7 +371,7 @@ export default function Home() {
 
         <footer className="text-center text-gray-500 text-sm pt-4 border-t border-gray-700">
           <p>
-            Developed by <Link href="https://x.com/bevatsal1122" className="text-gray-400 hover:text-gray-300 transition-colors">Vatsal</Link> and <Link href="https://x.com/ameeetgaikwad" className="text-gray-400 hover:text-gray-300 transition-colors">Amit</Link> | ClearMark © {new Date().getFullYear()}
+            Developed by <Link href="https://x.com/bevatsal1122" target="_blank" className="text-gray-400 hover:text-gray-300 transition-colors">Vatsal</Link> and <Link href="https://x.com/ameeetgaikwad" target="_blank" className="text-gray-400 hover:text-gray-300 transition-colors">Amit</Link> | ClearMark © {new Date().getFullYear()}
           </p>
         </footer>
     </main>
