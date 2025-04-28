@@ -25,48 +25,127 @@ enum ProcessingStage {
   Detecting = "Detecting watermarks...",
   Processing = "Processing image...",
   Finalizing = "Finalizing result...",
-  Complete = "Complete"
+  Complete = "Complete",
 }
+
+const styles = `
+@keyframes fadeIn {
+  0% { opacity: 0; filter: brightness(0.4); }
+  100% { opacity: 1; filter: brightness(1); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 1s ease-out forwards;
+}
+`;
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
-  const [currentStage, setCurrentStage] = useState<ProcessingStage>(ProcessingStage.None);
+  const [currentStage, setCurrentStage] = useState<ProcessingStage>(
+    ProcessingStage.None
+  );
+  const [progressPercentage, setProgressPercentage] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  
+
+  const [processingStartTime, setProcessingStartTime] = useState<number | null>(
+    null
+  );
+
   useEffect(() => {
-    if (isLoading && currentStage === ProcessingStage.Analyzing) {
-      const stageTimings = [
-        { stage: ProcessingStage.Detecting, delay: 800 },
-        { stage: ProcessingStage.Processing, delay: 1800 },
-        { stage: ProcessingStage.Finalizing, delay: 3000 },
-      ];
-      
-      let timeoutIds: NodeJS.Timeout[] = [];
-      
-      stageTimings.forEach(({ stage, delay }) => {
-        const id = setTimeout(() => {
-          setCurrentStage(stage);
-        }, delay);
-        timeoutIds.push(id);
-      });
-      
-      return () => {
-        timeoutIds.forEach(id => clearTimeout(id));
-      };
+    if (isLoading && !processingStartTime) {
+      setProcessingStartTime(Date.now());
+      console.log("Starting analyzing stage");
     }
+  }, [isLoading, processingStartTime]);
+
+  useEffect(() => {
+    if (!processingStartTime) return;
+
+    const interval = setInterval(() => {
+      const timeElapsed = Date.now() - processingStartTime;
+
+      const detectingAt = 1500;
+      const processingAt = 4000;
+      const finalizingAt = 5500;
+      const completeAt = 7000;
+
+      if (timeElapsed >= detectingAt && timeElapsed < processingAt) {
+        if (currentStage !== ProcessingStage.Detecting) {
+          console.log("Setting stage to Detecting");
+          setCurrentStage(ProcessingStage.Detecting);
+        }
+      } else if (timeElapsed >= processingAt && timeElapsed < finalizingAt) {
+        if (currentStage !== ProcessingStage.Processing) {
+          console.log("Setting stage to Processing");
+          setCurrentStage(ProcessingStage.Processing);
+        }
+      } else if (timeElapsed >= finalizingAt && !result) {
+        if (currentStage !== ProcessingStage.Finalizing) {
+          console.log("Setting stage to Finalizing");
+          setCurrentStage(ProcessingStage.Finalizing);
+        }
+      }
+
+      if (result || !isLoading) {
+        clearInterval(interval);
+        setProcessingStartTime(null);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [processingStartTime, currentStage, result, isLoading]);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (
+      isLoading &&
+      currentStage !== ProcessingStage.None &&
+      currentStage !== ProcessingStage.Complete
+    ) {
+      const targetPercentage =
+        currentStage === ProcessingStage.Analyzing
+          ? 25
+          : currentStage === ProcessingStage.Detecting
+          ? 70
+          : currentStage === ProcessingStage.Processing
+          ? 85
+          : currentStage === ProcessingStage.Finalizing
+          ? 95
+          : 99;
+
+      intervalId = setInterval(() => {
+        setProgressPercentage((prev) => {
+          if (prev < targetPercentage) {
+            return Math.min(prev + 0.5, targetPercentage);
+          }
+          return prev;
+        });
+      }, 50);
+    } else if (currentStage === ProcessingStage.Complete) {
+      setProgressPercentage(100);
+    } else if (currentStage === ProcessingStage.None) {
+      setProgressPercentage(0);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [isLoading, currentStage]);
 
   const handleImageUpload = async (image: File) => {
     try {
       setIsLoading(true);
       setError(null);
+      setProgressPercentage(0);
+      setProcessingStartTime(null);
       setCurrentStage(ProcessingStage.Analyzing);
-      
+
       const origImgUrl = URL.createObjectURL(image);
       setOriginalImage(origImgUrl);
-      
+
       const formData = new FormData();
       formData.append("image", image);
 
@@ -78,7 +157,9 @@ export default function Home() {
       const data = await response.json();
 
       if (!response.ok || data.error) {
-        throw new Error(data.error || data.details || "Failed to process image");
+        throw new Error(
+          data.error || data.details || "Failed to process image"
+        );
       }
 
       setCurrentStage(ProcessingStage.Complete);
@@ -87,7 +168,11 @@ export default function Home() {
     } catch (error) {
       console.error("Error:", error);
       setCurrentStage(ProcessingStage.None);
-      setError(error instanceof Error ? error.message : "Failed to process image");
+      setProgressPercentage(0);
+      setProcessingStartTime(null);
+      setError(
+        error instanceof Error ? error.message : "Failed to process image"
+      );
       toast.error("Failed to process image. Please try again.");
     } finally {
       setIsLoading(false);
@@ -95,31 +180,17 @@ export default function Home() {
   };
 
   const ProcessingIndicator = () => (
-    <div className="flex flex-col items-center justify-center p-8 space-y-6 select-none">
-      <div className="relative">
-        <Loader2 className="w-12 h-12 text-gray-400 animate-spin" />
-        {currentStage === ProcessingStage.Complete && (
-          <CheckCircle2 className="w-12 h-12 text-green-500 absolute top-0 left-0 animate-slide-in" />
-        )}
-      </div>
+    <div className="flex flex-col items-center justify-center p-8 pt-2 space-y-3 select-none">
       <div className="text-center">
         <h3 className="font-medium text-gray-200 text-lg mb-2 select-none">
           {currentStage}
         </h3>
         <div className="w-full bg-gray-700 h-1.5 rounded-full overflow-hidden">
           <div
-            className="bg-gradient-to-r from-gray-500 to-gray-400 h-full rounded-full transition-all duration-500"
+            className="bg-gradient-to-r from-gray-500 to-gray-400 h-full rounded-full"
             style={{
-              width:
-                currentStage === ProcessingStage.Analyzing
-                  ? "25%"
-                  : currentStage === ProcessingStage.Detecting
-                  ? "50%"
-                  : currentStage === ProcessingStage.Processing
-                  ? "75%"
-                  : currentStage === ProcessingStage.Finalizing
-                  ? "95%"
-                  : "100%",
+              width: `${progressPercentage}%`,
+              transition: "width 300ms ease-out",
             }}
           />
         </div>
@@ -132,6 +203,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#121212] to-[#1d1d1d] relative overflow-hidden">
+      <style jsx global>
+        {styles}
+      </style>
+
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-20">
         <div className="absolute -top-40 -left-40 w-80 h-80 bg-gray-500/30 rounded-full blur-3xl" />
         <div className="absolute top-1/3 -right-20 w-60 h-60 bg-gray-600/20 rounded-full blur-3xl" />
@@ -170,12 +245,13 @@ export default function Home() {
                   Upload Your Image
                 </CardTitle>
                 <CardDescription className="text-gray-400 text-center">
-                  Our AI will remove watermarks preventing the best possible quality
+                  Our AI will remove watermarks preventing the best possible
+                  quality
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6 pt-6">
                 <div className="">
-                  <ImageUpload 
+                  <ImageUpload
                     onUpload={handleImageUpload}
                     isLoading={isLoading}
                   />
@@ -186,20 +262,23 @@ export default function Home() {
             <Card className="border-0 bg-gradient-to-b from-[#181818] to-[#232323] shadow-[0_0_15px_rgba(60,60,60,0.3)] overflow-hidden backdrop-blur-sm hover:shadow-xl transition-all duration-300">
               <CardHeader className="border-b border-gray-700 pb-4">
                 <CardTitle className="text-gray-200 text-2xl">
-                  {isLoading || !result ? "Processing Your Image" : "Your Enhanced Image"}
+                  {isLoading || !result
+                    ? "Processing Your Image"
+                    : "Your Enhanced Image"}
                 </CardTitle>
                 <CardDescription className="text-gray-400">
-                  {isLoading || !result ? "Please wait while we remove watermarks" : "Watermark successfully removed"}
+                  {isLoading || !result
+                    ? "Please wait while we remove watermarks"
+                    : "Watermark successfully removed. *AI can make mistakes"}
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="flex flex-col md:flex-row gap-4 min-h-[400px]">
-                  {/* Original Image */}
                   <div className="md:w-[50%] rounded-lg overflow-hidden border border-gray-700 shadow-lg flex items-center justify-center">
                     <div className="relative w-full h-full flex items-center justify-center">
-                      <img 
-                        src={originalImage!} 
-                        alt="Original image" 
+                      <img
+                        src={originalImage!}
+                        alt="Original image"
                         className="max-w-full max-h-full w-auto h-auto object-contain select-none"
                       />
                       <div className="absolute top-2 left-2 px-2 py-1 bg-gray-800/80 text-xs text-gray-200 rounded">
@@ -207,25 +286,38 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Processed Image */}
                   <div className="md:w-[50%] rounded-lg overflow-hidden border border-gray-700 shadow-lg">
                     {isLoading ? (
-                      <ProcessingIndicator />
+                      <div className="flex flex-col items-center justify-center h-full">
+                        <div className="">
+                          <Loader2 className="w-12 h-12 text-gray-400 animate-spin" />
+                          {currentStage === ProcessingStage.Complete && (
+                            <CheckCircle2 className="w-12 h-12 text-green-500 absolute top-0 left-0 animate-slide-in" />
+                          )}
+                        </div>
+                        <ProcessingIndicator />
+                      </div>
                     ) : error ? (
                       <div className="flex flex-col items-center justify-center h-full p-6 text-center">
                         <div className="bg-red-900/20 border border-red-800 rounded-lg p-4 w-full">
-                          <h3 className="text-red-400 font-medium mb-2">Processing Failed</h3>
+                          <h3 className="text-red-400 font-medium mb-2">
+                            Processing Failed
+                          </h3>
                           <p className="text-red-300 text-sm">{error}</p>
                         </div>
                         <button
                           onClick={() => {
                             setError(null);
+                            setProgressPercentage(0);
                             if (originalImage) {
                               fetch(originalImage)
-                                .then(res => res.blob())
-                                .then(blob => {
-                                  const file = new File([blob], "image.jpg", { type: "image/jpeg" });
+                                .then((res) => res.blob())
+                                .then((blob) => {
+                                  const file = new File([blob], "image.jpg", {
+                                    type: "image/jpeg",
+                                  });
                                   handleImageUpload(file);
                                 });
                             }
@@ -239,15 +331,17 @@ export default function Home() {
                       <div className="flex justify-center items-center h-full">
                         <div className="text-center">
                           <Loader2 className="w-10 h-10 text-gray-400 animate-spin mx-auto mb-4" />
-                          <p className="text-gray-300">Please wait, finishing up...</p>
+                          <p className="text-gray-300">
+                            Please wait, finishing up...
+                          </p>
                         </div>
                       </div>
                     ) : (
                       <div className="relative h-full flex items-center justify-center">
-                        <img 
-                          src={result} 
-                          alt="Processed image" 
-                          className="max-w-full max-h-full w-auto h-auto object-contain select-none"
+                        <img
+                          src={result}
+                          alt="Processed image"
+                          className="max-w-full max-h-full w-auto h-auto object-contain select-none animate-fade-in"
                         />
                         <div className="absolute top-2 left-2 px-2 py-1 bg-gray-800/80 text-xs text-gray-200 rounded">
                           Enhanced
@@ -271,15 +365,20 @@ export default function Home() {
                     onClick={() => {
                       if (originalImage) {
                         fetch(originalImage)
-                          .then(res => res.blob())
-                          .then(blob => {
-                            const file = new File([blob], "image.jpg", { type: "image/jpeg" });
+                          .then((res) => res.blob())
+                          .then((blob) => {
+                            const file = new File([blob], "image.jpg", {
+                              type: "image/jpeg",
+                            });
                             setResult(null);
+                            setProgressPercentage(0);
                             handleImageUpload(file);
                           })
-                          .catch(err => {
+                          .catch((err) => {
                             console.error("Error retrying:", err);
-                            toast.error("Failed to retry. Please upload again.");
+                            toast.error(
+                              "Failed to retry. Please upload again."
+                            );
                           });
                       }
                     }}
@@ -308,8 +407,11 @@ export default function Home() {
             How It Works
           </h2>
           <div className="relative flex flex-col items-center">
-            <div className="absolute h-full w-1 bg-gradient-to-b from-[#222] to-[#333] left-1/2 transform -translate-x-1/2 z-0 hidden md:block" style={{ top: '3rem', maxHeight: 'calc(100% - 6rem)' }}></div>
-            
+            <div
+              className="absolute h-full w-1 bg-gradient-to-b from-[#222] to-[#333] left-1/2 transform -translate-x-1/2 z-0 hidden md:block"
+              style={{ top: "3rem", maxHeight: "calc(100% - 6rem)" }}
+            ></div>
+
             {/* Step 1 */}
             <div className="flex flex-col items-center mb-16 relative z-10 w-full max-w-xl mx-auto">
               <div className="w-full p-6 bg-[#121212]/80 rounded-2xl border border-gray-800 hover:bg-[#151515] transition-all duration-300">
@@ -317,30 +419,36 @@ export default function Home() {
                   Upload Image
                 </h3>
                 <p className="text-gray-400 leading-relaxed">
-                  Upload any image that contains unwanted watermarks. Our system accepts various image formats including JPG, PNG, and WEBP with a maximum size of 10MB.
+                  Upload any image that contains unwanted watermarks. Our system
+                  accepts various image formats including JPG, PNG, and WEBP
+                  with a maximum size of 10MB.
                 </p>
               </div>
             </div>
-            
+
             <div className="flex flex-col items-center mb-16 relative z-10 w-full max-w-xl mx-auto">
-  
               <div className="w-full p-6 bg-[#121212]/80 rounded-2xl border border-gray-800 hover:bg-[#151515] transition-all duration-300">
                 <h3 className="text-gray-100 font-medium text-xl mb-3">
                   AI Processing
                 </h3>
                 <p className="text-gray-400 leading-relaxed">
-                  Our advanced AI identifies and processes the watermark using state-of-the-art computer vision algorithms. The system intelligently analyzes the image to detect watermark patterns.
+                  Our advanced AI identifies and processes the watermark using
+                  state-of-the-art computer vision algorithms. The system
+                  intelligently analyzes the image to detect watermark patterns.
                 </p>
               </div>
             </div>
-            
+
             <div className="flex flex-col items-center relative z-10 w-full max-w-xl mx-auto">
               <div className="w-full p-6 bg-[#121212]/80 rounded-2xl border border-gray-800 hover:bg-[#151515] transition-all duration-300">
                 <h3 className="text-gray-100 font-medium text-xl mb-3">
                   Download Result
                 </h3>
                 <p className="text-gray-400 leading-relaxed">
-                  Download your clean, watermark-free image instantly. The processed image maintains high quality while effectively removing unwanted watermarks and preserving the original details.
+                  Download your clean, watermark-free image instantly. The
+                  processed image maintains high quality while effectively
+                  removing unwanted watermarks and preserving the original
+                  details.
                 </p>
               </div>
             </div>
@@ -371,10 +479,26 @@ export default function Home() {
 
         <footer className="text-center text-gray-500 text-sm pt-4 border-t border-gray-700">
           <p>
-            Developed by <Link href="https://x.com/bevatsal1122" target="_blank" className="text-gray-400 hover:text-gray-300 transition-colors">Vatsal</Link> and <Link href="https://x.com/ameeetgaikwad" target="_blank" className="text-gray-400 hover:text-gray-300 transition-colors">Amit</Link> | ClearMark © {new Date().getFullYear()}
+            Developed by{" "}
+            <Link
+              href="https://x.com/bevatsal1122"
+              target="_blank"
+              className="text-gray-400 hover:text-gray-300 transition-colors"
+            >
+              Vatsal
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="https://x.com/ameeetgaikwad"
+              target="_blank"
+              className="text-gray-400 hover:text-gray-300 transition-colors"
+            >
+              Amit
+            </Link>{" "}
+            | ClearMark © {new Date().getFullYear()}
           </p>
         </footer>
-    </main>
+      </main>
     </div>
   );
 }
