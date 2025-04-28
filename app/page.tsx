@@ -119,7 +119,7 @@ export default function Home() {
       intervalId = setInterval(() => {
         setProgressPercentage((prev) => {
           if (prev < targetPercentage) {
-            return Math.min(prev + 0.5, targetPercentage);
+            return Math.min(prev + 0.4, targetPercentage);
           }
           return prev;
         });
@@ -269,7 +269,7 @@ export default function Home() {
                 <CardDescription className="text-gray-400">
                   {isLoading || !result
                     ? "Please wait while we remove watermarks"
-                    : "Watermark successfully removed. *AI can make mistakes"}
+                    : <span>Watermark successfully removed. AI can make mistakes <sup>*</sup></span>}
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
