@@ -5,8 +5,11 @@ import { Inter } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'ClearMark',
+  title: 'ClearMark: Remove Watermarks from Images Instantly',
   description: 'Remove watermarks from your images with ClearMark',
+  icons: {
+    icon: '/favicon.png',
+  },
 };
 
 export default function RootLayout({

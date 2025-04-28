@@ -269,7 +269,7 @@ export default function Home() {
                 <CardDescription className="text-gray-400">
                   {isLoading || !result
                     ? "Please wait while we remove watermarks"
-                    : <span>Watermark successfully removed. AI can make mistakes <sup>*</sup></span>}
+                    : <span>Watermark successfully removed. AI can make mistakes<sup>*</sup></span>}
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
